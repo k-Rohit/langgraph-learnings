@@ -1,10 +1,11 @@
 from langgraph.graph import START, END, StateGraph
 from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from typing import TypedDict, Annotated
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from dotenv import load_dotenv
+import sqlite3
 
 load_dotenv()
 
@@ -21,8 +22,11 @@ def chat(state: ChatState) -> ChatState:
     response = chat_model.invoke(messages)
     return {'messages': [response]}
 
+# create a sqllite database - 
+conn = sqlite3.connect(database='chatbot.db', check_same_thread=False)
+
 # define the checkpointer - 
-checkpointer = InMemorySaver()
+checkpointer = SqliteSaver(conn=conn)
 
 # build the graph - 
 chat_workflow = StateGraph(ChatState)

@@ -1,15 +1,12 @@
 import os
 import sys
 
-# make the project root (chatbot/) importable so `utils` and `backend` resolve.
-# must run BEFORE the local imports below.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
-from utils import generate_thread_id, reset_chat, add_thread
+from utils import generate_thread_id, reset_chat, add_thread, give_meaningful_title
 from backend.langgraph_backend import chatbot
 from langchain_core.messages import HumanMessage
-
 
 if 'message_history' not in st.session_state:
     st.session_state['message_history'] = []
@@ -19,7 +16,11 @@ if 'thread_id' not in st.session_state:
     
 if 'chat_threads' not in st.session_state:
     st.session_state['chat_threads'] = []
-    
+
+# maps thread_id -> meaningful title (shown in the sidebar)
+if 'thread_titles' not in st.session_state:
+    st.session_state['thread_titles'] = {}
+
 add_thread(st.session_state['thread_id'])
 
 CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
@@ -31,8 +32,10 @@ with st.sidebar:
         
     st.header("Conversations")
 
-for thread in st.session_state['chat_threads']:
-    if st.sidebar.button(str(thread)):
+# show newest chats first; label each with its title (fallback while untitled)
+for thread in reversed(st.session_state['chat_threads']):
+    label = st.session_state['thread_titles'].get(thread, 'New Chat')
+    if st.sidebar.button(label, key=thread):
         st.session_state['thread_id'] = thread
         state = chatbot.get_state({'configurable': {'thread_id': thread}})
         msgs = state.values.get('messages', [])
@@ -40,7 +43,6 @@ for thread in st.session_state['chat_threads']:
             {'role': 'user' if m.type == 'human' else 'assistant', 'content': m.content}
             for m in msgs
         ]
-
 
 # load the conversation history
 for message in st.session_state['message_history']:
@@ -50,7 +52,11 @@ for message in st.session_state['message_history']:
 user_input = st.chat_input(placeholder="Type here")
 
 if user_input:
-    
+    # on the first message of this chat, generate a meaningful title for the sidebar
+    current_thread = st.session_state['thread_id']
+    if current_thread not in st.session_state['thread_titles']:
+        st.session_state['thread_titles'][current_thread] = give_meaningful_title(user_input)
+
     # add the user's message to history and show it
     st.session_state['message_history'].append({'role': 'user', 'content': user_input})
     with st.chat_message('user'):
@@ -65,7 +71,6 @@ if user_input:
                 stream_mode='messages'
             )
         )
-
     st.session_state['message_history'].append({'role': 'assistant', 'content': ai_message})
         
         
