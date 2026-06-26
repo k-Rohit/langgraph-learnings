@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 from utils import generate_thread_id, reset_chat, add_thread, give_meaningful_title
-from backend.langgraph_backend import chatbot
+from backend.langgraph_backend import chatbot, retrieve_all_threads, load_titles, set_thread_title
 from langchain_core.messages import HumanMessage
 
 if 'message_history' not in st.session_state:
@@ -15,11 +15,12 @@ if 'thread_id' not in st.session_state:
     st.session_state['thread_id'] = generate_thread_id()
     
 if 'chat_threads' not in st.session_state:
-    st.session_state['chat_threads'] = []
+    st.session_state['chat_threads'] = retrieve_all_threads()
 
-# maps thread_id -> meaningful title (shown in the sidebar)
+# maps thread_id -> meaningful title (shown in the sidebar), loaded from disk so
+# titles survive a restart
 if 'thread_titles' not in st.session_state:
-    st.session_state['thread_titles'] = {}
+    st.session_state['thread_titles'] = load_titles()
 
 add_thread(st.session_state['thread_id'])
 
@@ -55,7 +56,9 @@ if user_input:
     # on the first message of this chat, generate a meaningful title for the sidebar
     current_thread = st.session_state['thread_id']
     if current_thread not in st.session_state['thread_titles']:
-        st.session_state['thread_titles'][current_thread] = give_meaningful_title(user_input)
+        title = give_meaningful_title(user_input)
+        st.session_state['thread_titles'][current_thread] = title
+        set_thread_title(current_thread, title)
 
     # add the user's message to history and show it
     st.session_state['message_history'].append({'role': 'user', 'content': user_input})

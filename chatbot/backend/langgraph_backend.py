@@ -15,7 +15,6 @@ chat_model = ChatOpenAI(model='gpt-4o-mini',temperature=0.1)
 # define the state - 
 class ChatState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
-    
 
 def chat(state: ChatState) -> ChatState:
     messages = state['messages']
@@ -38,3 +37,26 @@ chat_workflow.add_edge('chat_node', END)
 
 chatbot = chat_workflow.compile(checkpointer=checkpointer)
 
+def retrieve_all_threads():
+    all_threads = set()
+    for checkpoint in checkpointer.list(None):
+        all_threads.add(checkpoint.config['configurable']['thread_id'])
+    return list(all_threads)
+
+# sidebar titles, stored in the same DB as the checkpointer (single source of truth)
+conn.execute(
+    "CREATE TABLE IF NOT EXISTS thread_titles (thread_id TEXT PRIMARY KEY, title TEXT)"
+)
+conn.commit()
+
+def set_thread_title(thread_id, title):
+    conn.execute(
+        "INSERT INTO thread_titles (thread_id, title) VALUES (?, ?) "
+        "ON CONFLICT(thread_id) DO UPDATE SET title = excluded.title",
+        (thread_id, title),
+    )
+    conn.commit()
+
+def load_titles():
+    rows = conn.execute("SELECT thread_id, title FROM thread_titles").fetchall()
+    return {thread_id: title for thread_id, title in rows}
