@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 from utils import generate_thread_id, reset_chat, add_thread, give_meaningful_title
 from backend.langgraph_backend import chatbot, retrieve_all_threads, load_titles, set_thread_title
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 
 if 'message_history' not in st.session_state:
     st.session_state['message_history'] = []
@@ -71,14 +71,18 @@ if user_input:
         st.text(user_input)
 
     # stream the assistant's reply as a separate (sibling) bubble
-    with st.chat_message('assistant'):
-        ai_message = st.write_stream(
-            message_chunk.content for message_chunk, metadata in chatbot.stream(
-                {'messages': [HumanMessage(content=user_input)]},
+    with st.chat_message("assistant"):
+        def ai_only_stream():
+            for message_chunk, metadata in chatbot.stream(
+                {"messages": [HumanMessage(content=user_input)]},
                 config=CONFIG,
-                stream_mode='messages'
-            )
-        )
+                stream_mode="messages"
+            ):
+                if isinstance(message_chunk, AIMessage):
+                    # yield only assistant tokens
+                    yield message_chunk.content
+
+        ai_message = st.write_stream(ai_only_stream())
     st.session_state['message_history'].append({'role': 'assistant', 'content': ai_message})
         
         
