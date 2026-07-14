@@ -115,8 +115,8 @@ if __name__ == "__main__":
                 config={"configurable": {"thread_id": thread_id}},
             )
 
-            # Get the latest message from the assistant
-            messages = result["messages"]
-            last_msg = messages[-1]
-            print(f"Bot: {last_msg.content}\n")
+        # Get the latest message from the assistant
+        messages = result["messages"]
+        last_msg = messages[-1]
+        print(f"Bot: {last_msg.content}\n")
 
