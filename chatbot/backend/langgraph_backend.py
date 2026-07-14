@@ -39,12 +39,12 @@ checkpointer = SqliteSaver(conn=conn)
 # build the graph -
 chat_workflow = StateGraph(ChatState)
 chat_workflow.add_node('chat_node',chat)
-chat_workflow.add_node('tool_node',tool_node)
+chat_workflow.add_node('tools',tool_node)
 
-# add the edges - 
+# add the edges -
 chat_workflow.add_edge(START, 'chat_node')
 chat_workflow.add_conditional_edges('chat_node',tools_condition)
-chat_workflow.add_edge('tool_node','chat_node')
+chat_workflow.add_edge('tools','chat_node')
 chat_workflow.add_edge('chat_node', END)
 
 chatbot = chat_workflow.compile(checkpointer=checkpointer)
